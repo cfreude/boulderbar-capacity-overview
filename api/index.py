@@ -2,12 +2,15 @@ from flask import Flask
 from flask import render_template_string
 
 from urllib.request import urlopen
+from urllib.error import URLError
+
+prefix_url = 'https://flash-cloud.boulderbar.net/modules/bbext/CustomerCapacity.php?gym=%s'
 
 start_urls = [
-    ('Hannovergasse', 'https://shop.boulderbar.net:8080/modules/bbext/CustomerCapacity.php?gym=han'),
-    ('Wienerberg', 'https://shop.boulderbar.net:8080/modules/bbext/CustomerCapacity.php?gym=wb'),
-    ('Hauptbahnhof', 'https://shop.boulderbar.net:8080/modules/bbext/CustomerCapacity.php?gym=hbf'),
-    ('Seestadt', 'https://shop.boulderbar.net:8080/modules/bbext/CustomerCapacity.php?gym=see'),
+    ('Hannovergasse', 'han'),
+    ('Wienerberg', 'wb'),
+    ('Hauptbahnhof', 'hbf'),
+    ('Seestadt', 'see'),
 ]
 
 app = Flask(__name__)
@@ -61,16 +64,18 @@ def hello_world():
 
     caps = []
 
-    for name, url in start_urls:
-        page = urlopen(url)
-        html_bytes = page.read()
-        html = html_bytes.decode("utf-8")
-        cap_index = html.find('capacity_bar')
-        h2_index = html.find('<h2>', cap_index)
-        h2_end = html.find('</h2>', h2_index+4)
-        percent = html[h2_index+4:h2_end-1]
-        #print(percent)
-        caps.append((name, percent))
+    for name, url_postfix in start_urls:
+        try:
+            page = urlopen(prefix_url % url_postfix)
+            html_bytes = page.read()
+            html = html_bytes.decode("utf-8")
+            cap_index = html.find('capacity_bar')
+            h2_index = html.find('<h2>', cap_index)
+            h2_end = html.find('</h2>', h2_index+4)
+            percent = html[h2_index+4:h2_end-1]
+            caps.append((name, percent))        
+        except URLError as e:
+            print("Error:", e.reason)
         
     bars = '\n'.join([bar(n, p, 'green') for n, p in caps])
 
